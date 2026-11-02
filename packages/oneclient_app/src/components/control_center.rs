@@ -142,7 +142,7 @@ impl Component for AccountHeader {
             None => t("oneclient.components.control_center.not_signed_in").to_string(),
         };
         let subtitle = match (account.as_ref(), unusable) {
-            (_, true) => t("oneclient.components.control_center.microsoft_required"),
+            (_, true) => t("oneclient.components.control_center.account_error"),
             (Some(account), false) if account.is_microsoft() => {
                 t("oneclient.components.control_center.microsoft_account")
             }

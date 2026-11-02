@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::LazyLock;
 
@@ -19,6 +20,8 @@ use crate::hooks::{
 use crate::layout::HOME_BACKGROUND_ASSET;
 use crate::theme::colors;
 use crate::ui::ImageFallbackExt;
+
+use super::version_art::version_background;
 
 pub const ART_PREVIEW_EDGE: u32 = PREVIEW_IMAGE_EDGE;
 
@@ -147,9 +150,26 @@ fn use_resolved_art(art: &DynamicArt) -> Option<(String, Bytes)> {
             .map(|bytes| (format!("{max_edge}|{}", path.display()), bytes))
     });
 
+    let bundled = version_background(major, key).and_then(|path| {
+        static ART: LazyLock<HashMap<&'static str, Bytes>> = LazyLock::new(|| {
+            super::version_art::VERSION_BACKGROUNDS
+                .iter()
+                .filter_map(|&path| AppAssets::get_bytes(path).map(|bytes| (path, bytes)))
+                .collect()
+        });
+        ART.get(path)
+            .cloned()
+            .map(|bytes| (format!("{max_edge}|{path}"), bytes))
+    });
+    // Keep the hooks unconditional while avoiding remote downloads for bundled releases.
     let curated = use_version_metadata(major, key, loader);
     let candidates = use_version_art(major, key);
-    let art_url = url.or_else(|| resolve_art_url(curated.as_ref(), &candidates));
+    let art_url = url.or_else(|| {
+        bundled
+            .is_none()
+            .then(|| resolve_art_url(curated.as_ref(), &candidates))
+            .flatten()
+    });
 
     let image_query = use_cached_image(art_url.clone(), max_edge);
 
@@ -167,7 +187,7 @@ fn use_resolved_art(art: &DynamicArt) -> Option<(String, Bytes)> {
             .map(|(url, bytes)| (format!("{edge}|{url}"), bytes))
     };
 
-    cover_bytes.or(full).or_else(preview)
+    cover_bytes.or(bundled).or(full).or_else(preview)
 }
 
 impl Component for DynamicArt {

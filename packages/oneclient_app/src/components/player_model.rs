@@ -310,7 +310,11 @@ impl Player {
 
 impl Component for PlayerModel {
     fn render(&self) -> impl IntoElement {
-        let (profile_skin, profile_slim) = use_player_skin(self.uuid.clone());
+        let (profile_skin, profile_slim) = use_player_skin(if self.skin.is_some() {
+            String::new()
+        } else {
+            self.uuid.clone()
+        });
         let (skin, slim) = self.skin.clone().unwrap_or((profile_skin, profile_slim));
 
         let player = use_hook(|| Rc::new(RefCell::new(Player::default())));

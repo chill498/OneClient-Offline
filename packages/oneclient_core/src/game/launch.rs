@@ -335,6 +335,20 @@ async fn start(
     let cwd = game_dir;
     polyio::create_dir_all(&cwd).await.ok();
 
+    #[cfg(target_os = "windows")]
+    if state.settings.read().fullscreen_cursor_compatibility {
+        match crate::game::game_options::apply_cursor_compatibility(&cwd).await {
+            Ok(true) => tracing::info!(
+                cluster_id,
+                "applied Minecraft fullscreen cursor compatibility"
+            ),
+            Ok(false) => {}
+            Err(err) => {
+                tracing::warn!(cluster_id, error = %err, "could not apply Minecraft cursor compatibility")
+            }
+        }
+    }
+
     if let Err(err) = crate::game::write_allowed_symlinks(&cwd).await {
         tracing::warn!(cluster_id, error = %err, "failed to write allowed_symlinks.txt");
     }
@@ -353,6 +367,10 @@ async fn start(
 
     if !dedicated {
         crate::game::link_cluster_logs(&cluster, &cwd).await;
+    }
+
+    if let Err(err) = crate::local_skin::prepare_for_launch(&cwd, account).await {
+        tracing::warn!(cluster_id, error = %err, "could not prepare the local offline skin");
     }
 
     let client_jar = paths::versions_dir()?
@@ -401,7 +419,13 @@ async fn start(
     let mut mc_args = arguments::minecraft_arguments(
         arg_map.get(&ArgumentType::Game).map(Vec::as_slice),
         version_info.minecraft_arguments.as_deref(),
-        &account.access_token,
+        // Offline accounts have no credentials. This placeholder only keeps
+        // vanilla's argument parser happy; it cannot authenticate a session.
+        if account.is_offline() {
+            "0"
+        } else {
+            &account.access_token
+        },
         &account.username,
         account.id,
         &version.id,
@@ -411,6 +435,11 @@ async fn start(
         version.type_,
         profile.resolution.unwrap_or_default(),
         &java.os_arch,
+        if account.is_offline() {
+            "legacy"
+        } else {
+            "msa"
+        },
     )?;
     arguments::append_profile_game_arguments(
         &mut mc_args,

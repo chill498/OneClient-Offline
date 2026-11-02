@@ -119,6 +119,15 @@ fn main() {
 
     let cli = cli::parse();
 
+    // An explicit root allows portable use and isolated launch checks without
+    // touching the user's existing OneClient settings, accounts, or game files.
+    let isolated_profile = std::env::var_os("ONECLIENT_HOME")
+        .filter(|dir| !dir.is_empty())
+        .map(std::path::PathBuf::from);
+    if let Some(dir) = isolated_profile.as_ref() {
+        oneclient_common::paths::set_launcher_dir(dir.clone());
+    }
+
     let mut builder = Builder::new_multi_thread();
     builder.enable_all().max_blocking_threads(64);
 
@@ -129,7 +138,11 @@ fn main() {
     let rt = builder.build().unwrap();
     let _tokio_guard = rt.enter();
 
-    let adopted = rt.block_on(oneclient_core::relocate::adopt_legacy_dir());
+    let adopted = if isolated_profile.is_some() {
+        Ok(None)
+    } else {
+        rt.block_on(oneclient_core::relocate::adopt_legacy_dir())
+    };
 
     // no settings file is the sign of a fresh install, but not proof of one
     let never_set_up = oneclient_common::paths::settings_file()
@@ -184,14 +197,17 @@ fn main() {
         tracing::warn!("no single-instance endpoint, a second launcher can start: {reason}");
     }
 
-    match oneclient_app::shortcut::launcher_exe()
-        .and_then(|exe| oneclient_app::protocol::register(&exe))
-    {
-        Ok(()) => {}
-        Err(err) => tracing::warn!(
-            "could not register the {}:// handler: {err:#}",
-            oneclient_app::protocol::SCHEME
-        ),
+    // A test/portable profile must not replace the normal installation's URL handler.
+    if isolated_profile.is_none() {
+        match oneclient_app::shortcut::launcher_exe()
+            .and_then(|exe| oneclient_app::protocol::register(&exe))
+        {
+            Ok(()) => {}
+            Err(err) => tracing::warn!(
+                "could not register the {}:// handler: {err:#}",
+                oneclient_app::protocol::SCHEME
+            ),
+        }
     }
 
     if let Some(dir) = abandoned_move {

@@ -11,6 +11,7 @@ mod error;
 pub mod game;
 pub mod images;
 mod java_store;
+pub mod local_skin;
 pub mod logger;
 pub mod migration;
 pub mod recovery;

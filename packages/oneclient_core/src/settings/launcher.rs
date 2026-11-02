@@ -13,6 +13,36 @@ pub enum ViewLayout {
     List,
 }
 
+#[cfg(test)]
+mod selection_tests {
+    use super::*;
+
+    #[test]
+    fn previous_settings_load_without_a_selection() {
+        let settings: LauncherSettings =
+            serde_json::from_str(r#"{"seen_onboarding":true}"#).unwrap();
+        assert_eq!(settings.selected_cluster_id, None);
+        assert!(settings.seen_onboarding);
+    }
+
+    #[test]
+    fn selection_survives_settings_roundtrip_and_can_be_cleared() {
+        let mut settings = LauncherSettings::default();
+        settings.selected_cluster_id = Some(42);
+        let saved = serde_json::to_vec(&settings).unwrap();
+        let mut loaded: LauncherSettings = serde_json::from_slice(&saved).unwrap();
+        assert_eq!(loaded.selected_cluster_id, Some(42));
+        loaded.selected_cluster_id = None;
+        let saved = serde_json::to_vec(&loaded).unwrap();
+        assert_eq!(
+            serde_json::from_slice::<LauncherSettings>(&saved)
+                .unwrap()
+                .selected_cluster_id,
+            None
+        );
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum LaunchBehaviour {
@@ -93,6 +123,8 @@ pub struct LauncherSettings {
     pub animations_enabled: bool,
     pub theme: AppTheme,
     pub accent_color: Option<String>,
+    pub selected_cluster_id: Option<i64>,
+    pub fullscreen_cursor_compatibility: bool,
     pub view_states: BTreeMap<String, ViewState>,
     pub seen_onboarding: bool,
     pub skip_microsoft_java: bool,
@@ -155,6 +187,8 @@ impl Default for LauncherSettings {
             animations_enabled: true,
             theme: AppTheme::default(),
             accent_color: None,
+            selected_cluster_id: None,
+            fullscreen_cursor_compatibility: cfg!(target_os = "windows"),
             view_states: BTreeMap::new(),
             seen_onboarding: false,
             skip_microsoft_java: false,

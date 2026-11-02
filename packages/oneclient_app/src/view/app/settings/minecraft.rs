@@ -6,7 +6,7 @@ use oneclient_core::settings::{
 
 use super::settings_page;
 use crate::components::{
-    Dropdown, Icon, IconType, TextInput, memory_field, toggle, validate_number,
+    Dropdown, Icon, IconType, TextInput, memory_field, toggle, toggle_controlled, validate_number,
 };
 use crate::hooks::{use_dispatch, use_settings_snapshot};
 use crate::i18n::t;
@@ -101,6 +101,7 @@ impl Component for SettingsMinecraft {
             dispatch.update_global_profile(update);
         });
 
+        let dispatch = use_dispatch();
         let page = settings_page()
             .child(section_header(t(
                 "oneclient.settings.minecraft.section.game",
@@ -113,6 +114,21 @@ impl Component for SettingsMinecraft {
                     toggle(fullscreen),
                     fullscreen,
                     defaults.force_fullscreen.unwrap_or(false),
+                ),
+            ))
+            .child(settings_row(
+                IconType::Maximize01,
+                t("oneclient.settings.minecraft.cursor_compatibility.title"),
+                t("oneclient.settings.minecraft.cursor_compatibility.description"),
+                toggle_controlled(
+                    settings.fullscreen_cursor_compatibility,
+                    (move |()| {
+                        dispatch.edit_settings(|settings| {
+                            settings.fullscreen_cursor_compatibility =
+                                !settings.fullscreen_cursor_compatibility;
+                        });
+                    })
+                    .into(),
                 ),
             ))
             .child(settings_row(

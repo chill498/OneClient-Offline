@@ -175,6 +175,7 @@ impl PartialEq for AccountRow {
     fn eq(&self, other: &Self) -> bool {
         self.account.id == other.account.id
             && self.account.username == other.account.username
+            && self.account.kind == other.account.kind
             && self.active == other.active
     }
 }
@@ -245,6 +246,14 @@ impl Component for AccountRow {
                             .max_lines(1)
                             .color(colors::fg_primary()),
                     )
+                    .maybe(self.account.is_offline(), |el| {
+                        el.child(
+                            label()
+                                .text(t("oneclient.settings.accounts.kind.offline"))
+                                .font_size(11.)
+                                .color(colors::fg_secondary()),
+                        )
+                    })
                     .maybe(active, |el| {
                         el.child(
                             label()

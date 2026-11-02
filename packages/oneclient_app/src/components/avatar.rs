@@ -2,7 +2,10 @@ use bytes::Bytes;
 use freya::elements::image::{ImageHandle, image};
 use freya::engine::prelude::{Paint, SkData, SkImage, raster_n32_premul};
 use freya::prelude::*;
+use std::cell::RefCell;
+use std::rc::Rc;
 
+use super::skin_image_cache::SkinImageCache;
 use crate::hooks::use_player_skin;
 
 const AVATAR_SIZE: f32 = 32.;
@@ -37,19 +40,8 @@ impl Component for Avatar {
     fn render(&self) -> impl IntoElement {
         let (skin_bytes, _is_slim) = use_player_skin(self.uuid.clone());
 
-        let mut cache = use_state(|| None::<(usize, ImageHandle)>);
-        let src_ptr = skin_bytes.as_ptr() as usize;
-        let cached = cache.read().clone();
-        let head = match cached {
-            Some((ptr, holder)) if ptr == src_ptr => Some(holder),
-            _ => {
-                let holder = compose_head(&skin_bytes);
-                if let Some(holder) = &holder {
-                    cache.set(Some((src_ptr, holder.clone())));
-                }
-                holder
-            }
-        };
+        let cache = use_hook(|| Rc::new(RefCell::new(SkinImageCache::<ImageHandle>::default())));
+        let head = cache.borrow_mut().get_or_decode(&skin_bytes, compose_head);
 
         rect()
             .width(Size::px(AVATAR_SIZE))

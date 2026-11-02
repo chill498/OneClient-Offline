@@ -387,10 +387,6 @@ impl AuthService {
             Err(err) => return Err(err),
         };
 
-        if account.is_offline() && !self.has_microsoft_account().await {
-            return Err(AuthError::OfflineRequiresMicrosoft);
-        }
-
         Ok(account)
     }
 
@@ -524,6 +520,32 @@ mod tests {
         let (events, _rx) = EventBus::channel();
         let net = RequestClient::new(NetConfig::default()).expect("net client");
         (AuthService::with_store(store, net, events), id)
+    }
+
+    #[tokio::test]
+    async fn username_only_account_launches_without_a_microsoft_account_or_token() {
+        let mut store = CredentialsStore::default();
+        let offline = store.add_offline_account("Steve".into()).unwrap();
+        store.users.get_mut(&offline.id).unwrap().expires = chrono::DateTime::UNIX_EPOCH;
+        let (events, _rx) = EventBus::channel();
+        let net = RequestClient::new(NetConfig::default()).expect("net client");
+        let service = AuthService::with_store(store, net, events);
+
+        let launched = service.default_account_for_launch().await.unwrap().unwrap();
+        assert_eq!(launched.id, offline.id);
+        assert!(launched.is_offline());
+        assert!(!launched.is_microsoft());
+        assert!(launched.access_token.is_empty());
+        assert!(launched.refresh_token.is_empty());
+        assert!(!service.has_microsoft_account().await);
+        assert!(!service.check_expired_sessions().await);
+        assert!(
+            service
+                .refresh_account(offline.id)
+                .await
+                .unwrap()
+                .is_offline()
+        );
     }
 
     #[tokio::test]

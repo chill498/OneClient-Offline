@@ -182,6 +182,7 @@ pub fn minecraft_arguments(
     version_type: VersionType,
     resolution: Resolution,
     java_arch: &str,
+    user_type: &str,
 ) -> McResult<Vec<String>> {
     let mut parsed = Vec::new();
 
@@ -200,6 +201,7 @@ pub fn minecraft_arguments(
                 assets_directory,
                 version_type,
                 resolution,
+                user_type,
             )?);
         }
     }
@@ -220,6 +222,7 @@ pub fn minecraft_arguments(
                     assets_directory,
                     version_type,
                     resolution,
+                    user_type,
                 )
             },
             java_arch,
@@ -366,6 +369,7 @@ pub fn parse_minecraft_argument(
     assets_directory: &Path,
     version_type: VersionType,
     resolution: Resolution,
+    user_type: &str,
 ) -> McResult<String> {
     Ok(argument
         .replace("${accessToken}", access_token)
@@ -380,7 +384,7 @@ pub fn parse_minecraft_argument(
             oneclient_common::constants::MICROSOFT_CLIENT_ID,
         )
         .replace("${user_properties}", "{}")
-        .replace("${user_type}", "msa")
+        .replace("${user_type}", user_type)
         .replace("${version_name}", version)
         .replace("${assets_index_name}", asset_index)
         .replace(
@@ -1116,6 +1120,7 @@ mod tests {
             interfrost::api::minecraft::VersionType::Release,
             Resolution::default(),
             "arm64",
+            "msa",
         )
         .unwrap();
 
@@ -1148,12 +1153,60 @@ mod tests {
             interfrost::api::minecraft::VersionType::Release,
             Resolution::default(),
             "arm64",
+            "msa",
         )
         .unwrap();
 
         assert_eq!(args.iter().filter(|a| *a == "--gameDir").count(), 1);
         assert_eq!(args.iter().filter(|a| *a == "--username").count(), 1);
         assert_eq!(args.iter().filter(|a| *a == "--tweakClass").count(), 1);
+    }
+
+    #[test]
+    fn offline_and_microsoft_sessions_keep_distinct_launch_arguments() {
+        let modern: Vec<interfrost::api::minecraft::Argument> = serde_json::from_str(
+            r#"["--username", "${auth_player_name}", "--uuid", "${auth_uuid}",
+                "--accessToken", "${auth_access_token}", "--userType", "${user_type}"]"#,
+        )
+        .unwrap();
+        let legacy = "--username ${auth_player_name} --uuid ${auth_uuid} --accessToken ${auth_access_token} --userType ${user_type}";
+        let dir = std::env::temp_dir();
+        let offline_id = uuid::Uuid::parse_str("b50ad385-829d-3141-a216-7e7d7539ba7f").unwrap();
+
+        for (token, user_type) in [("0", "legacy"), ("real-microsoft-token", "msa")] {
+            for use_modern in [false, true] {
+                let args = minecraft_arguments(
+                    use_modern.then_some(modern.as_slice()),
+                    (!use_modern).then_some(legacy),
+                    token,
+                    "Notch",
+                    offline_id,
+                    "1.8.9",
+                    "1.8",
+                    &dir,
+                    &dir,
+                    interfrost::api::minecraft::VersionType::Release,
+                    Resolution::default(),
+                    "amd64",
+                    user_type,
+                )
+                .unwrap();
+
+                assert_eq!(
+                    args,
+                    vec![
+                        "--username",
+                        "Notch",
+                        "--uuid",
+                        "b50ad385829d3141a2167e7d7539ba7f",
+                        "--accessToken",
+                        token,
+                        "--userType",
+                        user_type,
+                    ]
+                );
+            }
+        }
     }
 
     #[test]

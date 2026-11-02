@@ -28,6 +28,19 @@ fn update_prompt(version: &str) -> Prompt<UpdateAnswer> {
 const PROGRESS_STEP: u64 = 256 * 1024;
 
 pub fn spawn_update_check(auto_install: bool, events: EventBus) {
+    // The official updater would replace the offline build with a different
+    // product. Custom builds are updated using their own installer instead.
+    if std::env::current_exe()
+        .ok()
+        .and_then(|exe| {
+            exe.parent()
+                .map(|dir| dir.join("oneclient-offline-build.txt"))
+        })
+        .is_some_and(|marker| marker.is_file())
+    {
+        tracing::info!("offline build: use its installer for launcher updates");
+        return;
+    }
     tokio::spawn(async move {
         if let Err(err) = run_check(auto_install, events).await {
             tracing::warn!("update check failed: {err:#}");

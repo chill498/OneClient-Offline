@@ -4,3 +4,10 @@
 OneLauncher.iml
 
 /packages/oneclient_app/icons/generated/
+
+# Never commit local profiles or build/release artifacts
+/dist/
+/data/
+*.pfx
+*.p12
+.env

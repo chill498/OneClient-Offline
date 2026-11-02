@@ -4,6 +4,7 @@ use freya::prelude::*;
 use crate::AppAssets;
 
 pub fn use_player_skin(uuid: String) -> (Bytes, bool) {
+    let local = crate::components::use_local_skin(uuid.parse().unwrap_or_default());
     let profile = super::use_player_profile(uuid.clone(), None::<String>);
 
     let (skin_url, is_slim) = crate::hooks::settled_or_loading(&profile)
@@ -13,8 +14,19 @@ pub fn use_player_skin(uuid: String) -> (Bytes, bool) {
 
     let steve = use_memo(|| AppAssets::get_bytes("steve.png").unwrap_or_default());
     let alex = use_memo(|| AppAssets::get_bytes("alex.png").unwrap_or_default());
+    // Convert the saved Vec only when the query changes. Bytes clones then
+    // share one allocation across avatar/model renders.
+    let local_bytes = use_memo(move || {
+        crate::hooks::settled_or_loading(&local)
+            .flatten()
+            .map(|skin| (Bytes::from(skin.png), skin.slim))
+    });
 
     let default_slim = (java_string_hash(&uuid) & 1) == 1;
+
+    if let Some((skin, slim)) = &*local_bytes.read() {
+        return (skin.clone(), *slim);
+    }
 
     match crate::hooks::loaded_image(skin_url.as_deref(), &skin_query) {
         Some((_, bytes)) => (bytes, is_slim),

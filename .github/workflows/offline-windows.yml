@@ -1,0 +1,61 @@
+name: Offline Windows build
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: offline-windows-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: github.repository == 'chill498/OneClient-Offline'
+    runs-on: windows-2025
+    timeout-minutes: 180
+    env:
+      CARGO_BUILD_JOBS: '4'
+      CARGO_INCREMENTAL: '0'
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4
+        with:
+          toolchain: '1.99.1'
+          targets: x86_64-pc-windows-msvc
+      - uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756
+        with:
+          arch: x64
+      - name: Focused regression checks
+        run: |
+          cargo test -p oneclient_auth --locked --target x86_64-pc-windows-msvc
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          cargo test -p oneclient_mc --locked --target x86_64-pc-windows-msvc
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          cargo test -p oneclient_net --lib --locked --target x86_64-pc-windows-msvc
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          cargo test -p oneclient_core --lib --locked --target x86_64-pc-windows-msvc cursor_tests
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          cargo test -p oneclient_core --lib --locked --target x86_64-pc-windows-msvc selection_tests
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - name: Install NSIS on the CI runner
+        run: |
+          choco install nsis --version=3.12 --yes --no-progress
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - name: Build unsigned review artifacts
+        run: ./distribution/windows/build-offline.ps1
+      - name: Upload unsigned review artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: OneClient-Offline-UNSIGNED-${{ github.sha }}
+          if-no-files-found: error
+          path: |
+            dist/unsigned/*-UNSIGNED.exe
+            dist/unsigned/*-UNSIGNED.zip
+            dist/unsigned/SHA256SUMS.txt

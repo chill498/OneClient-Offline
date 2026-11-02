@@ -147,10 +147,8 @@ pub struct Clusters;
 impl Component for Clusters {
     fn render(&self) -> impl IntoElement {
         let clusters_query = use_clusters();
-        let active_id = use_active_cluster_id();
+        let mut active_id = use_active_cluster_id();
         let show_create = use_state(|| false);
-        let mut selected = use_state(|| None::<GridSelection>);
-        let mut selected_cluster = use_state(|| None::<i64>);
         let mut filter = use_state(|| Filter::All);
         let query = use_state(String::new);
         let loaders = use_state(Vec::<String>::new);
@@ -201,25 +199,12 @@ impl Component for Clusters {
                 .or_else(|| instances.first().map(|c| GridSelection::Instance(c.id)))
         };
 
-        if selected.read().is_none() {
-            *selected.write() = match active_cluster.as_ref() {
-                Some(cluster) if cluster.is_isolated() => Some(GridSelection::Instance(cluster.id)),
-                other => default_line(&groups, other.cloned())
-                    .map(GridSelection::Line)
-                    .or_else(fallback),
-            };
-        }
-
-        let current = (*selected.read())
-            .filter(|sel| match sel {
-                GridSelection::Line(line) => groups.contains_key(line),
-                GridSelection::Instance(id) => instances.iter().any(|c| c.id == *id),
-            })
-            .or_else(fallback);
-
-        if *selected.read() != current {
-            *selected.write() = current;
-        }
+        let current = match active_cluster.as_ref() {
+            Some(cluster) if cluster.is_isolated() => Some(GridSelection::Instance(cluster.id)),
+            other => default_line(&groups, other.cloned())
+                .map(GridSelection::Line)
+                .or_else(fallback),
+        };
 
         let line = match current {
             Some(GridSelection::Line(line)) => Some(line),
@@ -230,14 +215,10 @@ impl Component for Clusters {
             .and_then(|line| groups.get(&line).cloned())
             .unwrap_or_default();
 
-        if line.is_some() && selected_cluster.read().is_none() {
-            *selected_cluster.write() =
-                default_line_cluster(&clusters_for_line, active_cluster.as_ref());
-        }
-
-        let cluster = selected_cluster
-            .read()
-            .and_then(|id| clusters_for_line.iter().find(|c| c.id == id).cloned())
+        let cluster = active_cluster
+            .as_ref()
+            .filter(|active| clusters_for_line.iter().any(|c| c.id == active.id))
+            .cloned()
             .or_else(|| clusters_for_line.first().cloned());
 
         let instance = match current {
@@ -333,10 +314,8 @@ impl Component for Clusters {
                     (true, Some(c), _) | (_, _, [c]) => cluster_caption(c),
                     _ => tf("oneclient.clusters.page.instance_count", &[&list.len()]),
                 };
-                let on_press = move |_| {
-                    selected.set(Some(item));
-                    selected_cluster.set(None);
-                };
+                let target = default_line_cluster(list, active_cluster.as_ref());
+                let on_press = move |_| active_id.set(target);
                 if grid {
                     VersionCard::new(line, list, caption, is_selected, on_press)
                         .menu(line_menu)
@@ -354,7 +333,8 @@ impl Component for Clusters {
                 .map(|c| {
                     let item = GridSelection::Instance(c.id);
                     let is_selected = current == Some(item);
-                    let on_press = move |_| selected.set(Some(item));
+                    let id = c.id;
+                    let on_press = move |_| active_id.set(Some(id));
                     let menu = Some(ClusterMenuTarget::for_cluster(c, true));
                     if grid {
                         VersionCard::for_instance(c, is_selected, on_press)
@@ -379,7 +359,7 @@ impl Component for Clusters {
                     loader: cluster.mc_loader,
                     user_created: cluster.user_created,
                     base: Sidebar {
-                        picker: line_picker(line, &cluster, &clusters_for_line, selected_cluster),
+                        picker: line_picker(line, &cluster, &clusters_for_line, active_id),
                         description: cluster.description.clone(),
                         ..Sidebar::base(&cluster, sidebar_w)
                     },
@@ -669,7 +649,7 @@ fn line_picker(
     line: ReleaseLine,
     cluster: &Cluster,
     siblings: &[Cluster],
-    mut selected_cluster: State<Option<i64>>,
+    mut active_id: State<Option<i64>>,
 ) -> Option<Element> {
     if siblings.len() <= 1 {
         return None;
@@ -704,7 +684,7 @@ fn line_picker(
                     .height(Size::px(40.))
                     .on_select(move |idx: usize| {
                         if let Some(id) = ids.get(idx).copied() {
-                            selected_cluster.set(Some(id));
+                            active_id.set(Some(id));
                         }
                     }),
             )

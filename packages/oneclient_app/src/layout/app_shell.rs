@@ -18,7 +18,6 @@ use crate::layout::AnimatedAppOutlet;
 use crate::use_settings_snapshot;
 use oneclient_core::clusters::Cluster;
 use oneclient_core::images::BACKGROUND_IMAGE_EDGE;
-use oneclient_db::models::ClusterId;
 
 use crate::hooks::{
     ActiveClusterState, BROWSER_COMPAT_DEFAULT, BrowserCompatState, BrowserStateStore,
@@ -37,8 +36,21 @@ pub struct AppShell;
 
 impl Component for AppShell {
     fn render(&self) -> impl IntoElement {
-        let active_cluster = use_state(|| None::<ClusterId>);
+        let saved = use_settings_snapshot().settings.selected_cluster_id;
+        let mut active_cluster = use_state(move || saved);
         use_provide_active_cluster(ActiveClusterState(active_cluster));
+        let clusters = crate::hooks::settled_or_loading(&use_clusters());
+        let resolved = clusters.as_ref().map(|clusters| {
+            home_cluster(clusters, *active_cluster.read()).map(|cluster| cluster.id)
+        });
+        let actions = use_dispatch();
+        use_side_effect_with_deps(&resolved, move |resolved| {
+            let Some(selected) = *resolved else { return };
+            if *active_cluster.peek() != selected {
+                active_cluster.set(selected);
+            }
+            actions.select_cluster(selected);
+        });
 
         let browser_compat = use_state(|| BROWSER_COMPAT_DEFAULT);
         use_provide_browser_compat(BrowserCompatState(browser_compat));

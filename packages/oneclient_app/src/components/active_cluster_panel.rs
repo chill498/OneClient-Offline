@@ -22,7 +22,7 @@ pub struct ActiveClusterPanel;
 impl Component for ActiveClusterPanel {
     fn render(&self) -> impl IntoElement {
         let clusters_query = use_clusters();
-        let mut active_id = use_active_cluster_id();
+        let active_id = use_active_cluster_id();
         let dispatch = use_dispatch();
         let game = use_game_snapshot();
         let launcher = use_launcher();
@@ -30,12 +30,6 @@ impl Component for ActiveClusterPanel {
         let clusters = settled_or_loading(&clusters_query).unwrap_or_default();
 
         let sorted = sort_clusters_for_home(clusters);
-
-        if active_id.read().is_none()
-            && let Some(first) = sorted.first()
-        {
-            *active_id.write() = Some(first.id);
-        }
 
         let active = active_id
             .read()

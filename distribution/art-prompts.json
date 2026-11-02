@@ -1,0 +1,33 @@
+{
+  "tool": "built-in image_gen",
+  "assets": [
+    {
+      "asset": "backgrounds/version-classic.png",
+      "prompt": "Use case: stylized-concept. Asset type: bundled background illustration for a Minecraft-style game launcher's version card and full window Home background. Create one original cinematic voxel landscape: sunlit block-built stone castle and grassy river valley, blue sky, warm classic adventure mood. Wide 16:9 composition, richly detailed block geometry and pixel textures, polished game artwork, clear silhouette and depth, generous darker open space toward left so UI text stays readable. Environment only, no characters, no written words, no numbers, no logo, no UI, no watermark. This is a standalone image, no collage, no panels. Opaque background."
+    },
+    {
+      "asset": "backgrounds/version-trials.png",
+      "prompt": "Use case: stylized-concept. Asset type: bundled background illustration for a Minecraft-style game launcher's version card and full window Home background. Create one original cinematic voxel landscape: underground copper and tuff trial chamber, glowing amber lanterns, oxidized teal blocks, mysterious but inviting. Wide 16:9 composition, richly detailed block geometry and pixel textures, polished game artwork, clear silhouette and depth, generous darker open space toward left so UI text stays readable. Environment only, no characters, no written words, no numbers, no logo, no UI, no watermark. This is a standalone image, no collage, no panels. Opaque background."
+    },
+    {
+      "asset": "backgrounds/version-grove.png",
+      "prompt": "Use case: stylized-concept. Asset type: bundled background illustration for a Minecraft-style game launcher's version card and full window Home background. Create one original cinematic voxel landscape: misty pale forest with blocky white-barked trees and soft orange glowing flowers, atmospheric dusk. Wide 16:9 composition, richly detailed block geometry and pixel textures, polished game artwork, clear silhouette and depth, generous darker open space toward left so UI text stays readable. Environment only, no characters, no written words, no numbers, no logo, no UI, no watermark. This is a standalone image, no collage, no panels. Opaque background."
+    },
+    {
+      "asset": "backgrounds/version-peaks.png",
+      "prompt": "Use case: stylized-concept. Asset type: bundled background illustration for a Minecraft-style game launcher's version card and full window Home background. Create one original cinematic voxel landscape: majestic blocky mountain peaks, winding trail and alpine lake, purple sunset and golden horizon. Wide 16:9 composition, richly detailed block geometry and pixel textures, polished game artwork, clear silhouette and depth, generous darker open space toward left so UI text stays readable. Environment only, no characters, no written words, no numbers, no logo, no UI, no watermark. This is a standalone image, no collage, no panels. Opaque background."
+    },
+    {
+      "asset": "backgrounds/version-jungle.png",
+      "prompt": "Use case: stylized-concept. Asset type: bundled background illustration for a Minecraft-style game launcher's version card and full window Home background. Create one original cinematic voxel landscape: lush blocky jungle canyon with waterfalls, tropical emerald canopy, bright morning light. Wide 16:9 composition, richly detailed block geometry and pixel textures, polished game artwork, clear silhouette and depth, generous darker open space toward left so UI text stays readable. Environment only, no characters, no written words, no numbers, no logo, no UI, no watermark. This is a standalone image, no collage, no panels. Opaque background."
+    },
+    {
+      "asset": "backgrounds/version-cavern.png",
+      "prompt": "Use case: stylized-concept. Asset type: bundled background illustration for a Minecraft-style game launcher's version card and full window Home background. Create one original cinematic voxel landscape: dramatic blocky sulfur cavern with golden mineral formations and pools of turquoise water, amber light. Wide 16:9 composition, richly detailed block geometry and pixel textures, polished game artwork, clear silhouette and depth, generous darker open space toward left so UI text stays readable. Environment only, no characters, no written words, no numbers, no logo, no UI, no watermark. This is a standalone image, no collage, no panels. Opaque background."
+    },
+    {
+      "asset": "backgrounds/version-wilderness.png",
+      "prompt": "Use case: stylized-concept. Asset type: bundled background illustration for a Minecraft-style game launcher's version card and full window Home background. Create one original cinematic voxel landscape: snowy block-built pine forest and distant ice mountains under blue aurora, crisp moonlit atmosphere. Wide 16:9 composition, richly detailed block geometry and pixel textures, polished game artwork, clear silhouette and depth, generous darker open space toward left so UI text stays readable. Environment only, no characters, no written words, no numbers, no logo, no UI, no watermark. This is a standalone image, no collage, no panels. Opaque background."
+    }
+  ]
+}

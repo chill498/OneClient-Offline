@@ -1,78 +1,29 @@
-<div align="center">
+# OneClient Offline
 
-<img src=".github/media/RepoBanner.png" alt="Repository Banner" />
+Unofficial GPL-3.0 community fork of [Polyfrost/OneLauncher](https://github.com/Polyfrost/OneLauncher), maintained by [chill498](https://github.com/chill498). This fork is independent of Polyfrost.
 
-# OneClient  |  OneLauncher
-The monorepo containing the code for OneLauncher, OneClient, and their core backend.
+Username-only accounts are **offline and unauthenticated**. They can be used for singleplayer and servers that permit offline identities. Microsoft authentication and ownership requirements for authenticated services remain in place.
 
-OneClient is a Minecraft client featuring fully 100% open-source components, offering many packaged and pre-configured mods in one click.
-OneLauncher is a WIP Minecraft launcher giving power-users the greatest customization whilst featuring a clean UI.
+The fork includes optional local PNG skins with Normal/Slim models, the reproduced setup/avatar freeze fix, persistent selection shared by Home/Versions/Launch, seven embedded version backgrounds, and a Minecraft fullscreen cursor compatibility option. Local in-game skins require a compatible mod; cross-launcher visibility requires server-side skin support.
 
-</div>
+See [offline-mode details and validation](OFFLINE_MODE.md), [privacy/network disclosure](PRIVACY.md), and [code signing policy](CODE_SIGNING.md).
 
-## Installing
+## Build
 
-You can install the latest release of OneClient from our website: [https://polyfrost.org/projects/oneclient](https://polyfrost.org/projects/oneclient)
-as well as our [GitHub releases](https://github.com/Polyfrost/OneLauncher/releases/latest).
+Windows builds require Rust 1.99.1, Visual Studio C++ build tools and a Windows SDK. The manual `Offline Windows build` workflow runs focused tests and builds unsigned review artifacts from this repository's source. It never publishes a release or claims signing approval.
 
-| Windows (x86_64) | macOS (Intel & Apple Silicon) | Linux (x86_64)                                          |
-|------------------|-------------------------------|---------------------------------------------------------|
-| Installer 🔄      | DMG 🔄                        | AppImage 🔄                                             |
-|                  | App Bundle 🔄                 | DEB                                                     |
-|                  |                               | RPM                                                     |
-|                  |                               | [AUR](https://aur.archlinux.org/packages/oneclient-bin) |
-
-> 🔄 = Has support for autoupdating built-in
-
-
-## Contributing
-
-We welcome contributions! Please read our [contributing guidelines](CONTRIBUTING.md) before getting started.
-
-
-### Requirements
-
-The project targets **Rust 1.97** or later. You can install Rust via [rustup](https://rustup.rs/).
-
-
-### Building & Running
-
-```sh
-# Run the app
-cargo run -p oneclient_app
-
-# Build a release binary
-cargo build -p oneclient_app --release
+```text
+cargo --config profile.release.package.oneclient_app.codegen-units=16 rustc -p oneclient_app --bin oneclient_app --release --locked --target x86_64-pc-windows-msvc -- -C lto=thin
 ```
 
+The source is based on upstream commit `290578ef1d4182e50d015c3f284a1c31b17f46d5`. Every file in the supplied base ZIP was checked against upstream Git blob hashes. [Provenance](distribution/upstream-provenance.json) records the source and patch hashes. Original upstream workflows are retained under `distribution/upstream-workflows` for reference, without being activated for this fork.
 
-### Packaging / Releasing
+## Releases and code signing policy
 
-Installers are produced with [**cargo-packager**](https://github.com/crabnebula-dev/cargo-packager)
-(the standalone bundler spun out of the Tauri bundler). Config lives in
-[`packages/oneclient_app/Cargo.toml`](./packages/oneclient_app/Cargo.toml) under
-`[package.metadata.packager]`.
+The current revision 4 setup is unsigned. **No SignPath application has been accepted, and this fork is not signed or endorsed by SignPath or the upstream publisher.** The prepared signing workflow remains an application/review task. Windows protection should remain enabled. This repository does not offer a signed release yet.
 
-```sh
-cargo install cargo-packager --locked
+After project approval, signed executables and installers must come from reviewed source and verifiable builds using this fork's own approved signing project. No upstream signing identity or token may be reused. See [CODE_SIGNING.md](CODE_SIGNING.md).
 
-# Build the binary, then bundle it for the current OS:
-cargo build --release -p oneclient_app
-cargo packager --release -p oneclient_app --formats <targets>
-#   Windows: nsis      macOS: app,dmg      Linux: deb,appimage
-```
+## License and artwork
 
-
-### Versioning
-
-The workspace shares a single version, defined in the root [`Cargo.toml`](./Cargo.toml) under `[workspace.package]`.
-
-Versions and release notes come from [Knope](https://knope.tech) change files in [`.changeset/`](./.changeset).
-Add one per user-facing change with `knope document-change` (installed via `cargo install knope`). The
-`OneClient Release Build` workflow consumes them, bumps the version, writes [`CHANGELOG.md`](./CHANGELOG.md),
-and uses the new entry as the GitHub release body, which is what the launcher's changelog page shows.
-
-
-## Code signing
-
-This program uses free code signing provided by [SignPath.io](https://signpath.io?utm_source=foundation&utm_medium=github&utm_campaign=0install), and a certificate by the [SignPath Foundation](https://signpath.org?utm_source=foundation&utm_medium=github&utm_campaign=0install). We thank them very much to their contributions to OSS software!
+The code is [GPL-3.0-only](LICENSE). Preserve [upstream attribution](ATTRIBUTION.md). New version artwork was generated using the built-in image generation tool; [prompts and asset paths](distribution/art-prompts.json) are included.

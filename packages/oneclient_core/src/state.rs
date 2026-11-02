@@ -150,7 +150,10 @@ pub fn run_startup_tasks(state: &Arc<LauncherState>) {
         let content = background.services.content();
         let (versions_res, bundles_res, _, _) = tokio::join!(
             background.versions.sync(&background.services),
-            background.bundles.sync(&content),
+            tokio::time::timeout(
+                std::time::Duration::from_secs(30),
+                background.bundles.sync(&content)
+            ),
             oneclient_content::packages::load_bad_mods(&content),
             oneclient_content::packages::load_bad_modpacks(&content),
         );
@@ -160,8 +163,10 @@ pub fn run_startup_tasks(state: &Arc<LauncherState>) {
         if let Err(err) = crate::clusters::record_new_versions(&background).await {
             tracing::warn!("could not record new versions for migration: {err:#}");
         }
-        if let Err(err) = bundles_res {
-            tracing::error!("bundle catalog sync failed: {err:#}");
+        match bundles_res {
+            Ok(Ok(_)) => {}
+            Ok(Err(err)) => tracing::warn!("bundle catalog sync failed: {err:#}"),
+            Err(_) => tracing::warn!("startup bundle sync timed out; retaining cached content"),
         }
 
         let art = Arc::clone(&background);

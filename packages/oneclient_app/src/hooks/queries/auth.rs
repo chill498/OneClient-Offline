@@ -4,7 +4,7 @@ use freya::query::{
     Mutation, MutationCapability, MutationStateData, QueriesStorage, Query, QueryCapability,
     UseMutation, UseQuery, use_mutation, use_query,
 };
-use oneclient_auth::{AccountKind, MicrosoftLoginSession, MinecraftAccount};
+use oneclient_auth::{MicrosoftLoginSession, MinecraftAccount};
 use oneclient_core::LauncherError;
 use uuid::Uuid;
 
@@ -212,6 +212,7 @@ pub struct AddOfflineAccountMutation;
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct AddOfflineAccountKeys {
     pub username: String,
+    pub skin: Option<oneclient_core::local_skin::LocalSkin>,
 }
 
 impl MutationCapability for AddOfflineAccountMutation {
@@ -220,10 +221,23 @@ impl MutationCapability for AddOfflineAccountMutation {
     type Keys = AddOfflineAccountKeys;
 
     async fn run(&self, keys: &Self::Keys) -> Result<Self::Ok, Self::Err> {
-        Ok(crate::launcher::state()?
+        if let Some(skin) = &keys.skin {
+            skin.validate()?;
+        }
+        let state = crate::launcher::state()?;
+        let account = state
             .auth
             .add_offline_account(keys.username.clone())
-            .await?)
+            .await?;
+        if let Err(err) = oneclient_core::local_skin::save(&account, keys.skin.as_ref()).await {
+            if let Err(rollback) = state.auth.remove_account(account.id).await {
+                tracing::warn!(error = %rollback, "could not roll back an account after a skin save failure");
+            }
+            invalidate_auth_queries(Some(account.id)).await;
+            return Err(err);
+        }
+        crate::components::invalidate_local_skin(account.id).await;
+        Ok(account)
     }
 
     async fn on_settled(&self, _keys: &Self::Keys, result: &Result<Self::Ok, Self::Err>) {
@@ -256,6 +270,7 @@ impl MutationCapability for RemoveAccountMutation {
     async fn on_settled(&self, keys: &Self::Keys, result: &Result<Self::Ok, Self::Err>) {
         if result.is_ok() {
             invalidate_auth_queries(Some(keys.id)).await;
+            crate::components::invalidate_local_skin(keys.id).await;
         }
     }
 }
@@ -412,8 +427,4 @@ where
         } => Some(err.clone()),
         _ => None,
     }
-}
-
-pub fn accounts_have_microsoft(accounts: &[MinecraftAccount]) -> bool {
-    accounts.iter().any(|a| a.kind == AccountKind::Microsoft)
 }

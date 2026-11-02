@@ -38,6 +38,7 @@ mod microsoft_login;
 mod modpack_confirm_popup;
 mod navbar;
 mod notifications;
+mod offline_skin;
 mod optional_mods_popup;
 mod overlay_popup;
 mod package_delete_dialog;
@@ -51,6 +52,7 @@ mod release_migration_popup;
 mod screenshot_viewer;
 mod scrollview;
 mod segmented_control;
+mod skin_image_cache;
 mod spinner;
 mod splash_curtain;
 mod status_bar;
@@ -61,10 +63,10 @@ mod toggle;
 mod tooltip;
 mod update_prompt;
 pub mod upload_mclogs;
+mod version_art;
 mod version_art_gallery;
 mod version_card;
 
-pub use cluster_menu::{ClusterContextMenu, ClusterMenuTarget};
 pub use account_switcher::AccountSwitcher;
 pub use active_cluster_panel::ActiveClusterPanel;
 pub use asset_image::AssetImage;
@@ -72,9 +74,13 @@ pub use avatar::Avatar;
 pub use blocked_downloads_popup::BlockedDownloadsPopup;
 pub use bundle_choices_popup::BundleChoicesPopup;
 pub use bundled_install_warning::{BundledInstallWarning, PendingBundledInstall};
-pub use button::{Button, ButtonSize, ButtonVariant, copy_button, link_button, open_folder_button, sized_open_folder_button};
+pub use button::{
+    Button, ButtonSize, ButtonVariant, copy_button, link_button, open_folder_button,
+    sized_open_folder_button,
+};
 pub use charts::{BarChart, PieChart, ValueUnit, slice_color};
 pub use checkbox::checkbox_labeled;
+pub use cluster_menu::{ClusterContextMenu, ClusterMenuTarget};
 pub use cluster_update_popup::ClusterUpdatePopup;
 pub use code_block::CodeBlock;
 pub use color_picker::ColorPicker;
@@ -107,8 +113,12 @@ pub use modpack_confirm_popup::ModpackConfirmPopup;
 pub(crate) use navbar::window_controls;
 pub use navbar::{AppNavbar, OnboardingNavbar};
 pub use notifications::{ChevronToggle, NotificationCenter};
+pub use offline_skin::{OfflineSkinEditor, OfflineSkinPicker, SkinDraft, use_skin_draft};
+pub(crate) use offline_skin::{invalidate_local_skin, use_local_skin};
 pub use optional_mods_popup::OptionalModsPopup;
-pub use overlay_popup::{OVERLAY_BASE_LEVEL, OVERLAY_MAX_LEVEL, OverlayPopup, overlay_is_topmost, use_open_level};
+pub use overlay_popup::{
+    OVERLAY_BASE_LEVEL, OVERLAY_MAX_LEVEL, OverlayPopup, overlay_is_topmost, use_open_level,
+};
 pub use package_delete_dialog::use_shared_delete;
 pub(crate) use package_row::{
     CARD_GRID_H, CARD_H, GRID_GAP, GRID_MIN_W, badge, bundled_delete_action, disable_request,

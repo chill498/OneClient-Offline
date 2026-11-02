@@ -177,6 +177,26 @@ mod imp {
     #[cfg(debug_assertions)]
     const ENDPOINT: &str = r"\\.\pipe\org.polyfrost.OneClient-dev.ipc";
 
+    fn endpoint_for_profile(profile: Option<&std::path::Path>) -> String {
+        use std::hash::{Hash, Hasher};
+        match profile {
+            Some(profile) => {
+                let mut hash = std::collections::hash_map::DefaultHasher::new();
+                profile.hash(&mut hash);
+                format!("{ENDPOINT}.{:016x}", hash.finish())
+            }
+            None => ENDPOINT.to_string(),
+        }
+    }
+
+    fn endpoint() -> String {
+        // Portable profiles must not forward their launch to another installation.
+        let profile = std::env::var_os("ONECLIENT_HOME")
+            .filter(|value| !value.is_empty())
+            .and_then(|_| oneclient_common::paths::config_dir().ok());
+        endpoint_for_profile(profile)
+    }
+
     const ERROR_ACCESS_DENIED: i32 = 5;
     const ERROR_PIPE_BUSY: i32 = 231;
 
@@ -190,7 +210,7 @@ mod imp {
     pub async fn bind() -> Result<Listener, BindError> {
         match ServerOptions::new()
             .first_pipe_instance(true)
-            .create(ENDPOINT)
+            .create(endpoint())
         {
             Ok(server) => Ok(Listener { server }),
             Err(err) if err.raw_os_error() == Some(ERROR_ACCESS_DENIED) => Err(BindError::Taken),
@@ -200,7 +220,7 @@ mod imp {
 
     pub async fn send(request: &str) -> bool {
         for _ in 0..BUSY_RETRIES {
-            match ClientOptions::new().open(ENDPOINT) {
+            match ClientOptions::new().open(endpoint()) {
                 Ok(client) => return exchange(client, request).await,
                 Err(err) if err.raw_os_error() == Some(ERROR_PIPE_BUSY) => {
                     tokio::time::sleep(BUSY_BACKOFF).await;
@@ -219,7 +239,7 @@ mod imp {
                 return;
             }
 
-            let next = match ServerOptions::new().create(ENDPOINT) {
+            let next = match ServerOptions::new().create(endpoint()) {
                 Ok(next) => next,
                 Err(_) => return,
             };
@@ -227,6 +247,27 @@ mod imp {
 
             let commands = commands.clone();
             tokio::spawn(async move { handle(connected, &commands).await });
+        }
+    }
+
+    #[cfg(test)]
+    mod profile_endpoint_tests {
+        use super::*;
+
+        #[test]
+        fn portable_profiles_have_separate_stable_endpoints() {
+            use std::path::Path;
+            let first = endpoint_for_profile(Some(Path::new(r"C:\OneClient\data")));
+            assert_eq!(endpoint_for_profile(None), ENDPOINT);
+            assert_ne!(first, ENDPOINT);
+            assert_eq!(
+                first,
+                endpoint_for_profile(Some(Path::new(r"C:\OneClient\data")))
+            );
+            assert_ne!(
+                first,
+                endpoint_for_profile(Some(Path::new(r"C:\AnotherClient\data")))
+            );
         }
     }
 }

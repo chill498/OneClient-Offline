@@ -118,7 +118,9 @@ impl Component for Startup {
 
             let heading_to_onboarding = matches!(destination, Route::OnboardingWelcome { .. });
             let heading_to_terms = matches!(destination, Route::OnboardingTerms { .. });
-            if !heading_to_onboarding || !launcher.fetching {
+            // The launcher and cached data are ready. Optional remote catalog
+            // work must not hold first-run setup behind the startup screen.
+            {
                 // Raise the splash curtain so the hard route swap is hidden until Home settles onboarding animates itself
                 if !heading_to_onboarding && !heading_to_terms {
                     let mut active = splash.active;

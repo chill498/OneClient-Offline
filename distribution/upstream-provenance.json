@@ -1,0 +1,12 @@
+{
+  "upstream_repository": "https://github.com/Polyfrost/OneLauncher",
+  "upstream_commit": "290578ef1d4182e50d015c3f284a1c31b17f46d5",
+  "source_zip_sha256": "f8ddff62e01cc4d6bccaf7cbf5468daddef23febf346b7c21612a97eb6acf9b9",
+  "verified_blob_count": 864,
+  "verification": "Every supplied ZIP file matched the path and Git blob SHA from the upstream recursive tree fetched through the GitHub connector.",
+  "modified_source": "OneClient-2.9.0-offline-source.zip",
+  "modified_source_sha256": "96467de0b00fdc333ee64c9088d69c70bd24aadf4ccee95d1b0e5454e63db8f1",
+  "modification_patch": "OneClient-2.9.0-offline.patch",
+  "patch_sha256": "d61c3118b4a7a55ac25a8cf8588c81add0eea996c9d63db0a3e2a23923ef8883",
+  "patch_roundtrip": "Previously applied to a fresh supplied ZIP; all 880 resulting files matched the delivered modified source byte for byte."
+}

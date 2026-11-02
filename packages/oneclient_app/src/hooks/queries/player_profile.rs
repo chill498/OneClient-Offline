@@ -22,9 +22,22 @@ impl QueryCapability for FetchPlayerProfileQuery {
     type Keys = PlayerProfileQueryKeys;
 
     async fn run(&self, keys: &Self::Keys) -> Result<Self::Ok, Self::Err> {
+        if keys.uuid.is_empty() {
+            return Ok(PlayerProfileView::placeholder());
+        }
         let access_token = keys.access_token.clone();
 
         let state = crate::launcher::state()?;
+        if let Ok(id) = keys.uuid.parse()
+            && let Some(account) = state.auth.get_account(id).await
+            && account.is_offline()
+        {
+            return Ok(PlayerProfileView {
+                uuid: account.id.to_string(),
+                username: account.username,
+                ..Default::default()
+            });
+        }
         let client = &state.services.requester;
 
         Ok(

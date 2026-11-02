@@ -45,3 +45,58 @@ fn find_graphics_backend(options: &str) -> Option<&str> {
         .lines()
         .find_map(|line| line.strip_prefix(GRAPHICS_BACKEND_KEY))
 }
+
+/// Only touch options supported and already saved by this Minecraft version.
+/// A first launch with no options file is deliberately left to the game.
+pub(crate) async fn apply_cursor_compatibility(game_dir: &Path) -> LauncherResult<bool> {
+    let path = game_dir.join(OPTIONS_NAME);
+    if !polyio::try_exists(&path).await? {
+        return Ok(false);
+    }
+    let options = polyio::read_to_string(&path).await?;
+    let updated = cursor_compatible_options(&options);
+    if updated == options {
+        return Ok(false);
+    }
+    polyio::write_atomic(&path, updated).await?;
+    Ok(true)
+}
+
+fn cursor_compatible_options(options: &str) -> String {
+    options
+        .split_inclusive('\n')
+        .map(|line| {
+            let value = line.trim_end_matches(['\r', '\n']);
+            let newline = &line[value.len()..];
+            match value {
+                "exclusiveFullscreen:true" => format!("exclusiveFullscreen:false{newline}"),
+                "allowCursorChanges:true" => format!("allowCursorChanges:false{newline}"),
+                _ => line.to_string(),
+            }
+        })
+        .collect()
+}
+
+#[cfg(test)]
+mod cursor_tests {
+    use super::*;
+
+    #[test]
+    fn compatibility_preserves_fullscreen_input_and_unrelated_settings() {
+        let original = "version:4903\r\nfullscreen:true\r\nexclusiveFullscreen:true\r\nrawMouseInput:true\r\nallowCursorChanges:true\r\nmusic:0.4";
+        let expected = "version:4903\r\nfullscreen:true\r\nexclusiveFullscreen:false\r\nrawMouseInput:true\r\nallowCursorChanges:false\r\nmusic:0.4";
+        assert_eq!(cursor_compatible_options(original), expected);
+        assert_eq!(cursor_compatible_options(expected), expected);
+    }
+
+    #[test]
+    fn old_or_absent_options_are_not_invented() {
+        for original in [
+            "",
+            "version:1343\nfullscreen:false\n",
+            "exclusiveFullscreen:future\ncustom:allowCursorChanges:true\n",
+        ] {
+            assert_eq!(cursor_compatible_options(original), original);
+        }
+    }
+}

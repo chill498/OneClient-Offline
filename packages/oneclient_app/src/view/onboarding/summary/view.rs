@@ -146,6 +146,13 @@ pub(super) fn summary_view(
                     },
                 )),
         )
+        .maybe_child((!ready).then(|| {
+            label()
+                .text(t("oneclient.onboarding.summary.catalog_pending"))
+                .font_size(12.)
+                .color(colors::fg_secondary())
+                .into_element()
+        }))
         .maybe_child(failure.map(|reason| failure_notice(&reason)));
 
     rect()
@@ -189,7 +196,7 @@ pub(super) fn summary_view(
                     Button::new()
                         .secondary()
                         .width(Size::px(180.))
-                        .enabled(ready && !finishing)
+                        .enabled(!finishing)
                         .on_press(on_continue)
                         .text(t("oneclient.onboarding.summary.continue_anyway"))
                         .into_element()
@@ -208,10 +215,14 @@ pub(super) fn summary_view(
                     Button::new()
                         .primary()
                         .width(Size::px(160.))
-                        .enabled(ready && !finishing)
+                        .enabled(!finishing)
                         .on_press(on_finish)
-                        .text(if failed {
+                        .text(if finishing {
+                            t("oneclient.onboarding.summary.saving")
+                        } else if failed {
                             t("oneclient.common.try_again")
+                        } else if !ready {
+                            t("oneclient.onboarding.summary.finish_defaults")
                         } else {
                             t("oneclient.onboarding.summary.finish")
                         })

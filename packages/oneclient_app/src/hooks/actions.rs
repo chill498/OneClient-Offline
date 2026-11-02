@@ -18,7 +18,7 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
-use freya::prelude::spawn_forever;
+use freya::prelude::{WritableUtils, spawn_forever};
 use freya::query::QueriesStorage;
 use freya::radio::RadioStation;
 use oneclient_cluster::profiles::list_named_profiles;
@@ -265,14 +265,30 @@ impl Actions {
         Some(updated)
     }
 
-    fn persist(&self, settings: LauncherSettings) {
+    fn persist(&self, _settings: LauncherSettings) {
         let actions = self.clone();
         spawn_forever(async move {
+            // Rapid selections must never let an older write finish last.
+            static SAVE: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+            let _save = SAVE.lock().await;
             let Ok(state) = launcher::state() else { return };
+            let settings = state.settings.read().clone();
             if let Err(err) = save_settings_and_apply(&state.services, &settings).await {
                 actions.set_settings_error(Some(err.to_string()));
             }
         });
+    }
+
+    pub fn select_cluster(&self, cluster_id: Option<ClusterId>) {
+        let Ok(state) = launcher::state() else { return };
+        if state.settings.read().selected_cluster_id == cluster_id {
+            return;
+        }
+        if let Some(updated) =
+            self.mutate_settings(|settings| settings.selected_cluster_id = cluster_id)
+        {
+            self.persist(updated);
+        }
     }
 
     pub fn refresh_settings_from_core(&self) {
@@ -347,10 +363,44 @@ impl Actions {
         }
     }
 
-    pub fn mark_onboarding_seen(&self) {
-        if let Some(updated) = self.mutate_settings(|settings| settings.seen_onboarding = true) {
-            self.persist(updated);
+    pub async fn complete_onboarding(
+        &self,
+        versions: Vec<String>,
+    ) -> oneclient_core::LauncherResult<()> {
+        let state = launcher::state()?;
+        let mut updated = state.settings.read().clone();
+        for version in &versions {
+            if !updated.seen_versions.contains(version) {
+                updated.seen_versions.push(version.clone());
+            }
         }
+        updated.seen_onboarding = true;
+        // Finish is a local save, never a request for artwork, bundles or login.
+        // Report write failures on the summary page instead of silently looping
+        // back into onboarding the next time the client starts.
+        off_ui(async move {
+            tokio::time::timeout(
+                Duration::from_secs(15),
+                oneclient_core::settings::store::save_settings(&updated),
+            )
+            .await
+            .map_err(|_| {
+                std::io::Error::new(
+                    std::io::ErrorKind::TimedOut,
+                    "Saving setup timed out. Please try again.",
+                )
+            })?
+        })
+        .await?;
+        self.mutate_settings(|settings| {
+            settings.seen_onboarding = true;
+            for version in versions {
+                if !settings.seen_versions.contains(&version) {
+                    settings.seen_versions.push(version);
+                }
+            }
+        });
+        Ok(())
     }
 
     pub fn skip_microsoft_java(&self) {
@@ -1061,6 +1111,13 @@ impl Actions {
     }
 
     pub fn launch_cluster(&self, cluster_id: ClusterId) {
+        if let Some(active) =
+            freya::prelude::try_consume_root_context::<super::ActiveClusterState>()
+        {
+            let mut selected = active.0;
+            selected.set(Some(cluster_id));
+        }
+        self.select_cluster(Some(cluster_id));
         if let Some((title, body)) = cluster_busy(cluster_id) {
             self.notify(title).body(body).send();
             return;
@@ -1837,8 +1894,17 @@ impl Actions {
 
         spawn_forever(async move {
             off_ui(async move {
-                if let Err(err) = state.bundles.sync(&state.services.content()).await {
-                    tracing::error!("bundle catalog sync failed: {err:#}");
+                match tokio::time::timeout(
+                    BUNDLE_SYNC_BUDGET,
+                    state.bundles.sync(&state.services.content()),
+                )
+                .await
+                {
+                    Ok(Ok(_)) => {}
+                    Ok(Err(err)) => {
+                        tracing::warn!("bundle catalog sync failed; using cached catalog: {err:#}")
+                    }
+                    Err(_) => tracing::warn!("bundle catalog sync timed out; using cached catalog"),
                 }
                 if let Err(err) = oneclient_core::clusters::apply_remote_migrations(&state).await {
                     tracing::error!("cluster migrations failed: {err:#}");
@@ -2547,7 +2613,11 @@ struct ClusterWrite(ClusterId);
 
 impl ClusterWrite {
     fn take(cluster_id: ClusterId) -> Self {
-        *CLUSTER_WRITES.lock().unwrap().entry(cluster_id).or_default() += 1;
+        *CLUSTER_WRITES
+            .lock()
+            .unwrap()
+            .entry(cluster_id)
+            .or_default() += 1;
         Self(cluster_id)
     }
 }
