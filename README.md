@@ -20,7 +20,7 @@ The source is based on upstream commit `290578ef1d4182e50d015c3f284a1c31b17f46d5
 
 ## Releases and code signing policy
 
-The current revision 4 setup is unsigned. **No SignPath application has been accepted, and this fork is not signed or endorsed by SignPath or the upstream publisher.** The prepared signing workflow remains an application/review task. Windows protection should remain enabled. This repository does not offer a signed release yet.
+The current revision 4 setup is unsigned. A free SignPath Foundation application was submitted on 2 November 2026 and is pending review. **No signing approval or certificate has been issued, and this fork is not signed or endorsed by SignPath or the upstream publisher.** Windows protection should remain enabled. This repository does not offer a signed release yet.
 
 After project approval, signed executables and installers must come from reviewed source and verifiable builds using this fork's own approved signing project. No upstream signing identity or token may be reused. See [CODE_SIGNING.md](CODE_SIGNING.md).
 
